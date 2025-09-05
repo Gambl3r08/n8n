@@ -1,0 +1,124 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: n8n-deployment
+  namespace: n8n
+  labels:
+    app: n8n
+    version: v1.110.0
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: n8n
+  template:
+    metadata:
+      labels:
+        app: n8n
+        version: v1.110.0
+    spec:
+      securityContext:
+        fsGroup: 1000
+        runAsUser: 1000
+        runAsGroup: 1000
+      containers:
+      - name: n8n
+        image: n8n-local:latest
+        imagePullPolicy: Never  # Use local image built with Minikube
+        ports:
+        - containerPort: 5678
+          name: http
+          protocol: TCP
+        env:
+        # Load configuration from ConfigMap
+        - name: N8N_BASIC_AUTH_ACTIVE
+          valueFrom:
+            configMapKeyRef:
+              name: n8n-config
+              key: N8N_BASIC_AUTH_ACTIVE
+        - name: N8N_BASIC_AUTH_USER
+          valueFrom:
+            configMapKeyRef:
+              name: n8n-config
+              key: N8N_BASIC_AUTH_USER
+        - name: N8N_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: n8n-config
+              key: N8N_HOST
+        - name: N8N_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: n8n-config
+              key: N8N_PORT
+        - name: N8N_PROTOCOL
+          valueFrom:
+            configMapKeyRef:
+              name: n8n-config
+              key: N8N_PROTOCOL
+        - name: NODE_ENV
+          valueFrom:
+            configMapKeyRef:
+              name: n8n-config
+              key: NODE_ENV
+        - name: DB_TYPE
+          valueFrom:
+            configMapKeyRef:
+              name: n8n-config
+              key: DB_TYPE
+        - name: DB_SQLITE_DATABASE
+          valueFrom:
+            configMapKeyRef:
+              name: n8n-config
+              key: DB_SQLITE_DATABASE
+        - name: N8N_LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: n8n-config
+              key: N8N_LOG_LEVEL
+        # Load secrets
+        - name: N8N_BASIC_AUTH_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: n8n-secret
+              key: N8N_BASIC_AUTH_PASSWORD
+        - name: N8N_ENCRYPTION_KEY
+          valueFrom:
+            secretKeyRef:
+              name: n8n-secret
+              key: N8N_ENCRYPTION_KEY
+        # Volume mount for persistent data
+        volumeMounts:
+        - name: n8n-data
+          mountPath: /home/n8n/.n8n
+        # Resource limits and requests
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        # Health checks
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 5678
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 5678
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+      volumes:
+      - name: n8n-data
+        persistentVolumeClaim:
+          claimName: n8n-pvc
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30

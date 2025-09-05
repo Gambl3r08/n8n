@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: n8n-service
+  namespace: n8n
+  labels:
+    app: n8n
+spec:
+  type: ClusterIP
+  ports:
+  - port: 5678
+    targetPort: 5678
+    protocol: TCP
+    name: http
+  selector:
+    app: n8n
+
+---
+# NodePort service for external access (alternative to port-forward)
+apiVersion: v1
+kind: Service
+metadata:
+  name: n8n-nodeport
+  namespace: n8n
+  labels:
+    app: n8n
+    service-type: external
+spec:
+  type: NodePort
+  ports:
+  - port: 5678
+    targetPort: 5678
+    nodePort: 30678
+    protocol: TCP
+    name: http
+  selector:
+    app: n8n
